@@ -4,15 +4,20 @@ import (
 	"log"
 	"os"
 	"os/user"
+	"strings"
 )
 
-func getCurrentDir() string {
+func getExpandedCurrentDir() string {
 	path, err := os.Getwd()
 	if err != nil {
 		log.Println(err)
 		return "/"
 	}
 	return path
+}
+
+func getCurrentDir() string {
+	return strings.Replace(getExpandedCurrentDir(), os.Getenv("HOME"), "~", 1)
 }
 
 func getCurrentHostname() string {

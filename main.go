@@ -10,10 +10,22 @@ import (
 )
 
 var (
-	prevDir      = getCurrentDir()
+	prevDir      = getExpandedCurrentDir()
 	prevExitCode = 0
 	PID          = os.Getppid()
 )
+
+func initShell() {
+	os.Setenv("OLDPWD", getExpandedCurrentDir())
+	os.Setenv("PWD", getExpandedCurrentDir())
+	os.Setenv("SHELL", "/usr/bin/ohmygosh")
+}
+
+func precmd() {
+	title := getCurrentUsername() + "@" + getCurrentHostname() + ":" + getCurrentDir()
+	command := []string{"echo", "-ne", "\033]0;" + title + "\a"}
+	RunCommand(command)
+}
 
 func getprompt() {
 	// TODO: use PS1 to customize prompt
@@ -39,8 +51,19 @@ func RunShell(command string) {
 		} else if args[1] == "-" {
 			os.Chdir(prevDir)
 		} else {
-			prevDir = getCurrentDir()
+			prevDir = getExpandedCurrentDir()
+			os.Setenv("OLDPWD", prevDir)
 			os.Chdir(args[1])
+			os.Setenv("PWD", getExpandedCurrentDir())
+		}
+	case "echo":
+		if len(args[1:]) >= 1 {
+			for i := 1; i <= len(args[1:]); i++ {
+				if strings.HasPrefix(args[i], "$") {
+					fmt.Printf(os.Getenv(strings.Replace(args[i], "$", "", 1)) + " ")
+				}
+			}
+			fmt.Println()
 		}
 	case "$?":
 		// print exitcode of previous command
@@ -71,8 +94,10 @@ func RunCommand(command []string) {
 
 func main() {
 	reader := bufio.NewReader(os.Stdin)
+	initShell()
 	for {
 		getprompt()
+		precmd()
 		input, _ := reader.ReadString('\n')
 
 		// handle ctrl + d
